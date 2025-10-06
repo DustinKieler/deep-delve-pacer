@@ -17,6 +17,7 @@ import net.runelite.client.ui.overlay.infobox.Counter;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 import org.apache.commons.lang3.ArrayUtils;
 
+import java.lang.reflect.Array;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -62,6 +63,11 @@ public class DeepDelvePacerPlugin extends Plugin
 	private boolean ready;
 
 	/**
+	 * Caches whether the player is currently delving. Avoids checking map regions on each game tick.
+	 */
+	private boolean isDelving;
+
+	/**
 	 * The game tick (since login) when the player completed delve level 8.
 	 */
 	private int delve8CompletionTick;
@@ -99,6 +105,7 @@ public class DeepDelvePacerPlugin extends Plugin
 				String level = matcher.group(1);
 				if (level == null) { // Regex matched on delve 8 completion
 					delve8CompletionTick = ticksSinceLogin;
+					isDelving = true; // Set now, we don't actually care until 8 is completed.
 				} else { // Regex matched on delve 8+ completion which has the level in parentheses
 					recomputeDeepDelvePace(Integer.parseInt(level));
 					previousDeepDelveCompletionTick = ticksSinceLogin; // Make sure to update after the above recompute
@@ -122,9 +129,7 @@ public class DeepDelvePacerPlugin extends Plugin
 			case LOGGED_IN:
 				if (ready) {
 					ticksSinceLogin = 1; // Start at 1 since onGameTick will be called *after* all packets are processed (after chat messages, etc.)
-					delve8CompletionTick = 0;
-					previousDeepDelveCompletionTick = 0;
-					deepDelveTicksSum = 0;
+					resetDelveTracking();
 					ready = false;
 				}
 				break;
@@ -137,12 +142,14 @@ public class DeepDelvePacerPlugin extends Plugin
 	 */
 	@Subscribe
 	public void onGameTick(GameTick gameTick) {
-		// Remove the info box if it's showing and the player leaves Doom.
-		if (delvePaceCounter != null && !ArrayUtils.contains(client.getTopLevelWorldView().getMapRegions(), DEEP_DELVE_REGION_ID)) {
-			removePacingDelveInfoBox();
+		boolean noLongerDelving = isDelving && !ArrayUtils.contains(client.getTopLevelWorldView().getMapRegions(), DEEP_DELVE_REGION_ID);
+
+		if (noLongerDelving) {
+			removePacingDelveInfoBox(); // Will only be present 9+
+			resetDelveTracking(); // Resets data stored as a part of completing 8
 		}
 
-		ticksSinceLogin++;
+		ticksSinceLogin++; // Do this last
 	}
 
 	/**
@@ -191,7 +198,7 @@ public class DeepDelvePacerPlugin extends Plugin
 	private void updateDelveInfoBox(double avgDeepDelveTicks, int estimatedEndLevel) {
 		String avgTooltip = "Average: " + convertTicksToTimeDisplay(avgDeepDelveTicks);
 		String bestTooltip = "Best: " + convertTicksToTimeDisplay(bestDeepDelveTicks);
-		String tooltip = avgTooltip + "\n" + bestTooltip;
+		String tooltip = avgTooltip + "<br>" + bestTooltip;
 
 		if (delvePaceCounter != null) {
 			delvePaceCounter.setCount(estimatedEndLevel);
@@ -222,5 +229,15 @@ public class DeepDelvePacerPlugin extends Plugin
 			infoBoxManager.removeInfoBox(delvePaceCounter);
 			delvePaceCounter = null;
 		}
+	}
+
+	/**
+	 * Resets variables used for tracking delve completions.
+	 */
+	private void resetDelveTracking() {
+		delve8CompletionTick = 0;
+		previousDeepDelveCompletionTick = 0;
+		deepDelveTicksSum = 0;
+		isDelving = false;
 	}
 }

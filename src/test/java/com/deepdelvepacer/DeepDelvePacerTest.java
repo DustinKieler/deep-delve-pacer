@@ -68,7 +68,7 @@ public class DeepDelvePacerTest {
 
         assertNotNull(plugin.delvePaceCounter);
 
-        String[] times = plugin.delvePaceCounter.getTooltip().split("\n");
+        String[] times = plugin.delvePaceCounter.getTooltip().split("<br>");
         assertEquals("Average: 00:39.00", times[0]);
         assertEquals("Best: 00:39.00", times[1]);
 
@@ -88,7 +88,7 @@ public class DeepDelvePacerTest {
 
         assertNotNull(plugin.delvePaceCounter);
 
-        String[] times = plugin.delvePaceCounter.getTooltip().split("\n");
+        String[] times = plugin.delvePaceCounter.getTooltip().split("<br>");
         assertEquals("Average: 01:23.40", times[0]); // (152 + 105 + 160) / 3 * 0.6 = 83.4s
         assertEquals("Best: 01:03.00", times[1]); // 105 * 0.6 = 63s
 
@@ -128,7 +128,7 @@ public class DeepDelvePacerTest {
 
         // Verify the time does not include the ticks before reset
         assertNotNull(plugin.delvePaceCounter);
-        String[] times = plugin.delvePaceCounter.getTooltip().split("\n");
+        String[] times = plugin.delvePaceCounter.getTooltip().split("<br>");
         assertEquals("Average: 00:30.60", times[0]); // 51 ticks * 0.6 = 30.6s
         assertEquals("Best: 00:30.60", times[1]);
         // floor(((36000 - 51) / 51)) + current level (9) => 713
