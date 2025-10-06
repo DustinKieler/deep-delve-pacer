@@ -1,6 +1,5 @@
-package com.deepdelvepacer.launcher;
+package com.deepdelvepacer;
 
-import com.deepdelvepacer.DeepDelvePacerPlugin;
 import net.runelite.client.RuneLite;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 

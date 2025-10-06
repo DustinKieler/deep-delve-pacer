@@ -10,18 +10,14 @@ import net.runelite.api.GameState;
 import net.runelite.api.WorldView;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.worldmap.WorldMap;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
-import org.apache.commons.lang3.StringUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -59,9 +55,9 @@ public class DeepDelvePacerTest {
     @Test
     public void testNormalDelvesDoNotCreateInfoBox() {
         plugin.onChatMessage(createChatMessage(5));
-        assertNull(plugin.pacingDelveInfoBox);
+        assertNull(plugin.delvePaceCounter);
         plugin.onChatMessage(createChatMessage(8)); // Last normal delve
-        assertNull(plugin.pacingDelveInfoBox);
+        assertNull(plugin.delvePaceCounter);
     }
 
     @Test
@@ -70,14 +66,14 @@ public class DeepDelvePacerTest {
         simulateTicks(65);
         plugin.onChatMessage(createChatMessage(9));
 
-        assertNotNull(plugin.pacingDelveInfoBox);
+        assertNotNull(plugin.delvePaceCounter);
 
-        String[] times = plugin.pacingDelveInfoBox.getTooltip().split("\n");
+        String[] times = plugin.delvePaceCounter.getTooltip().split("\n");
         assertEquals("Average: 00:39.00", times[0]);
         assertEquals("Best: 00:39.00", times[1]);
 
         // (36000 - 65) / 65 => floor(552.84) => 552 + current level (9) => 560
-        assertEquals(561, plugin.pacingDelveInfoBox.getCount());
+        assertEquals(561, plugin.delvePaceCounter.getCount());
     }
 
     @Test
@@ -90,25 +86,25 @@ public class DeepDelvePacerTest {
         simulateTicks(160);
         plugin.onChatMessage(createChatMessage(11));
 
-        assertNotNull(plugin.pacingDelveInfoBox);
+        assertNotNull(plugin.delvePaceCounter);
 
-        String[] times = plugin.pacingDelveInfoBox.getTooltip().split("\n");
+        String[] times = plugin.delvePaceCounter.getTooltip().split("\n");
         assertEquals("Average: 01:23.40", times[0]); // (152 + 105 + 160) / 3 * 0.6 = 83.4s
         assertEquals("Best: 01:03.00", times[1]); // 105 * 0.6 = 63s
 
         // (36000 - (152 + 105 + 160)) / ((152 + 105 + 160) / 3) => floor(255.99) + current level (11) => 266
-        assertEquals(266, plugin.pacingDelveInfoBox.getCount());
+        assertEquals(266, plugin.delvePaceCounter.getCount());
     }
 
     @Test
     public void testLeavingAreaClearsInfoBox() {
         plugin.onChatMessage(createChatMessage(8));
         plugin.onChatMessage(createChatMessage(9));
-        assertNotNull(plugin.pacingDelveInfoBox);
+        assertNotNull(plugin.delvePaceCounter);
 
         when(client.getTopLevelWorldView().getMapRegions()).thenReturn(new int[] { -1 });
         plugin.onGameTick(null);
-        assertNull(plugin.pacingDelveInfoBox);
+        assertNull(plugin.delvePaceCounter);
     }
 
     @Test
@@ -131,12 +127,12 @@ public class DeepDelvePacerTest {
         plugin.onChatMessage(createChatMessage(9)); // Occurs on tick 51
 
         // Verify the time does not include the ticks before reset
-        assertNotNull(plugin.pacingDelveInfoBox);
-        String[] times = plugin.pacingDelveInfoBox.getTooltip().split("\n");
+        assertNotNull(plugin.delvePaceCounter);
+        String[] times = plugin.delvePaceCounter.getTooltip().split("\n");
         assertEquals("Average: 00:30.60", times[0]); // 51 ticks * 0.6 = 30.6s
         assertEquals("Best: 00:30.60", times[1]);
         // floor(((36000 - 51) / 51)) + current level (9) => 713
-        assertEquals(713, plugin.pacingDelveInfoBox.getCount());
+        assertEquals(713, plugin.delvePaceCounter.getCount());
     }
 
     /**

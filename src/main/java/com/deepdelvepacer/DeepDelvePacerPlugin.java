@@ -64,28 +64,28 @@ public class DeepDelvePacerPlugin extends Plugin
 	/**
 	 * The game tick (since login) when the player completed delve level 8.
 	 */
-	private int normalDelveCompletionTick;
+	private int delve8CompletionTick;
 
 	/**
 	 * The game tick (since login) when the player completed the previous deep delve.
 	 */
-	private int lastDeepDelveCompletionTick;
+	private int previousDeepDelveCompletionTick;
 
 	/**
 	 * A running total of the number of ticks required to complete a deep delve - used for computing the average.
 	 */
-	private int deepDelveCompletionTimesSum;
+	private int deepDelveTicksSum;
 
 	/**
 	 * Number of ticks for the personal best deep delve of this run.
 	 */
-	private int bestDeepDelveCompletionTicks;
+	private int bestDeepDelveTicks;
 
 	/**
 	 * A {@link Counter} to display the estimated achievable deep delve level and average deep delve time.
 	 * Package-private for testing.
 	 */
-	Counter pacingDelveInfoBox;
+	Counter delvePaceCounter;
 
 	/**
 	 * Called when a chat message is received in the chat box.
@@ -98,10 +98,10 @@ public class DeepDelvePacerPlugin extends Plugin
 			if (matcher.find()) {
 				String level = matcher.group(1);
 				if (level == null) { // Regex matched on delve 8 completion
-					normalDelveCompletionTick = ticksSinceLogin;
+					delve8CompletionTick = ticksSinceLogin;
 				} else { // Regex matched on delve 8+ completion which has the level in parentheses
 					recomputeDeepDelvePace(Integer.parseInt(level));
-					lastDeepDelveCompletionTick = ticksSinceLogin; // Make sure to update after the above recompute
+					previousDeepDelveCompletionTick = ticksSinceLogin; // Make sure to update after the above recompute
 				}
 			}
 		}
@@ -122,9 +122,9 @@ public class DeepDelvePacerPlugin extends Plugin
 			case LOGGED_IN:
 				if (ready) {
 					ticksSinceLogin = 1; // Start at 1 since onGameTick will be called *after* all packets are processed (after chat messages, etc.)
-					normalDelveCompletionTick = 0;
-					lastDeepDelveCompletionTick = 0;
-					deepDelveCompletionTimesSum = 0;
+					delve8CompletionTick = 0;
+					previousDeepDelveCompletionTick = 0;
+					deepDelveTicksSum = 0;
 					ready = false;
 				}
 				break;
@@ -138,7 +138,7 @@ public class DeepDelvePacerPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick gameTick) {
 		// Remove the info box if it's showing and the player leaves Doom.
-		if (pacingDelveInfoBox != null && !ArrayUtils.contains(client.getTopLevelWorldView().getMapRegions(), DEEP_DELVE_REGION_ID)) {
+		if (delvePaceCounter != null && !ArrayUtils.contains(client.getTopLevelWorldView().getMapRegions(), DEEP_DELVE_REGION_ID)) {
 			removePacingDelveInfoBox();
 		}
 
@@ -162,46 +162,46 @@ public class DeepDelvePacerPlugin extends Plugin
 	private void recomputeDeepDelvePace(int level) {
 		int levelCompletionTicks;
 		if (level == FIRST_DEEP_DELVE) {
-			levelCompletionTicks = ticksSinceLogin - normalDelveCompletionTick;
-			bestDeepDelveCompletionTicks = levelCompletionTicks;
+			levelCompletionTicks = ticksSinceLogin - delve8CompletionTick;
+			bestDeepDelveTicks = levelCompletionTicks;
 		} else {
-			levelCompletionTicks = ticksSinceLogin - lastDeepDelveCompletionTick;
-			if (levelCompletionTicks < bestDeepDelveCompletionTicks) {
-				bestDeepDelveCompletionTicks = levelCompletionTicks;
+			levelCompletionTicks = ticksSinceLogin - previousDeepDelveCompletionTick;
+			if (levelCompletionTicks < bestDeepDelveTicks) {
+				bestDeepDelveTicks = levelCompletionTicks;
 			}
 		}
 
 		// Compute average time to complete a deep delve
-		deepDelveCompletionTimesSum += levelCompletionTicks;
-		double averageDeepDelveCompletionTicks = (double) deepDelveCompletionTimesSum / (level - LAST_NORMAL_DELVE);
+		deepDelveTicksSum += levelCompletionTicks;
+		double avgDeepDelveTicks = (double) deepDelveTicksSum / (level - LAST_NORMAL_DELVE);
 
 		// Compute the estimated deep delve level achievable before the forced logout, based on the above average.
 		int ticksLeftBeforeLogout = MAX_LOGIN_TICKS - ticksSinceLogin;
-		int estimatedEndLevel = level + (int) (ticksLeftBeforeLogout / averageDeepDelveCompletionTicks);
+		int estimatedEndLevel = level + (int) (ticksLeftBeforeLogout / avgDeepDelveTicks);
 
-		updateDelveInfoBox(averageDeepDelveCompletionTicks, estimatedEndLevel);
+		updateDelveInfoBox(avgDeepDelveTicks, estimatedEndLevel);
 	}
 
 	/**
 	 * Updates the plugin's info box with the current estimated achievable deep delve.
 	 * The tooltip will also be updated with the average time required to complete a deep delve so far.
-	 * @param averageDeepDelveCompletionTicks The average number of ticks taken to complete a deep delve.
-	 * @param endLevel The estimated deep delve level the player will end on at the current pace.
+	 * @param avgDeepDelveTicks The average number of ticks taken to complete a deep delve.
+	 * @param estimatedEndLevel The estimated deep delve level the player will end on at the current pace.
 	 */
-	private void updateDelveInfoBox(double averageDeepDelveCompletionTicks, int endLevel) {
-		String avgTooltip = "Average: " + convertTicksToTimeDisplay(averageDeepDelveCompletionTicks);
-		String bestTooltip = "Best: " + convertTicksToTimeDisplay(bestDeepDelveCompletionTicks);
+	private void updateDelveInfoBox(double avgDeepDelveTicks, int estimatedEndLevel) {
+		String avgTooltip = "Average: " + convertTicksToTimeDisplay(avgDeepDelveTicks);
+		String bestTooltip = "Best: " + convertTicksToTimeDisplay(bestDeepDelveTicks);
 		String tooltip = avgTooltip + "\n" + bestTooltip;
 
-		if (pacingDelveInfoBox != null) {
-			pacingDelveInfoBox.setCount(endLevel);
-			pacingDelveInfoBox.setTooltip(tooltip);
+		if (delvePaceCounter != null) {
+			delvePaceCounter.setCount(estimatedEndLevel);
+			delvePaceCounter.setTooltip(tooltip);
 			return;
 		}
 
-		pacingDelveInfoBox = new Counter(itemManager.getImage(ItemID.DOM_TELEPORT_ITEM_5), this, endLevel);
-		pacingDelveInfoBox.setTooltip(tooltip);
-		infoBoxManager.addInfoBox(pacingDelveInfoBox);
+		delvePaceCounter = new Counter(itemManager.getImage(ItemID.DOM_TELEPORT_ITEM_5), this, estimatedEndLevel);
+		delvePaceCounter.setTooltip(tooltip);
+		infoBoxManager.addInfoBox(delvePaceCounter);
 	}
 
 	/**
@@ -218,9 +218,9 @@ public class DeepDelvePacerPlugin extends Plugin
 	 * If present, removes the pacing delve info box.
 	 */
 	private void removePacingDelveInfoBox() {
-		if (pacingDelveInfoBox != null) {
-			infoBoxManager.removeInfoBox(pacingDelveInfoBox);
-			pacingDelveInfoBox = null;
+		if (delvePaceCounter != null) {
+			infoBoxManager.removeInfoBox(delvePaceCounter);
+			delvePaceCounter = null;
 		}
 	}
 }
