@@ -1,6 +1,8 @@
 package com.deepdelvepacer;
 
 import javax.inject.Inject;
+
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -89,8 +91,8 @@ public class DeepDelvePacerPlugin extends Plugin
 
 	/**
 	 * A {@link Counter} to display the estimated achievable deep delve level and average deep delve time.
-	 * Package-private for testing.
 	 */
+	@VisibleForTesting
 	Counter delvePaceCounter;
 
 	/**
