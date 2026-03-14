@@ -102,7 +102,7 @@ public class DeepDelvePacerTest {
         plugin.onChatMessage(createChatMessage(9));
         assertNotNull(plugin.delvePaceCounter);
 
-        when(client.getTopLevelWorldView().getMapRegions()).thenReturn(new int[] { -1 });
+        when(client.getTopLevelWorldView().getMapRegions()).thenReturn(new int[] { WorldView.TOPLEVEL });
         plugin.onGameTick(null);
         assertNull(plugin.delvePaceCounter);
     }
